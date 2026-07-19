@@ -1,0 +1,17 @@
+name: geo-hull-area
+description: Wrap a set of points in their convex hull, then measure the hull's geodesic area — proves geo-tools nodes compose by passing the GeoJSON envelope straight through.
+
+nodes:
+  - alias: hull
+    package: christiangeorgelucas/geo-tools@0.1.0
+    node: ConvexHull
+  - alias: area
+    package: christiangeorgelucas/geo-tools@0.1.0
+    node: Area
+
+edges:
+  - from: hull
+    to: area
+    adapter:
+      # source expression (ConvexHull.geojson) -> destination field (Area.geojson)
+      "geojson": geojson

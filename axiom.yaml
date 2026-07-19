@@ -1,0 +1,34 @@
+name: christiangeorgelucas/geo-tools
+version: 0.1.0
+language: rust
+nodes:
+    - name: Distance
+      input: PointPair
+      output: Distance
+    - name: Bearing
+      input: PointPair
+      output: Bearing
+    - name: Destination
+      input: DestinationInput
+      output: Geometry
+    - name: Length
+      input: Geometry
+      output: Length
+    - name: Area
+      input: Geometry
+      output: Area
+    - name: Centroid
+      input: Geometry
+      output: Geometry
+    - name: BoundingBox
+      input: Geometry
+      output: BoundingBox
+    - name: ConvexHull
+      input: Geometry
+      output: Geometry
+    - name: Simplify
+      input: SimplifyInput
+      output: Geometry
+    - name: Contains
+      input: ContainsInput
+      output: Contains

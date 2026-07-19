@@ -1,0 +1,103 @@
+// Data contracts for christiangeorgelucas/geo-tools — composable geospatial
+// geometry over a single GeoJSON envelope. Coordinates everywhere are
+// [longitude, latitude] in decimal degrees on the WGS-84 datum (GeoJSON /
+// RFC 7946 axis order). All measurements use the geodesic (ellipsoidal, Karney)
+// model, so distances are in meters and areas in square meters.
+
+syntax = "proto3";
+
+package christiangeorgelucas.geo_tools;
+
+// The canonical geometry envelope: a GeoJSON geometry object (RFC 7946)
+// serialized as a JSON string, e.g. {"type":"Point","coordinates":[-73.98,40.75]}.
+// Every geometry-producing node emits this and every geometry-consuming node
+// accepts it, so nodes chain by passing `geojson` straight through. On failure a
+// producer sets `error` and leaves `geojson` empty; `error` is ignored on input.
+message Geometry {
+  string geojson = 1;
+  // Why geometry production failed (EMPTY_INPUT, INVALID_GEOJSON,
+  // WRONG_GEOMETRY_TYPE, INPUT_TOO_LONG, TOO_MANY_COORDS, NON_FINITE_COORD);
+  // empty on success. proto3 omits empty strings from JSON, so treat a missing
+  // `error` as success and a missing `geojson` as "no geometry produced".
+  string error = 2;
+}
+
+// An ordered pair of points, each [longitude, latitude] in decimal degrees.
+message PointPair {
+  double from_lon = 1;
+  double from_lat = 2;
+  double to_lon = 3;
+  double to_lat = 4;
+}
+
+// A geodesic (shortest-path-on-the-ellipsoid) distance in meters.
+message Distance {
+  double meters = 1;
+  // OUT_OF_RANGE (|lat|>90 or |lon|>180) or NON_FINITE_COORD; empty on success.
+  string error = 2;
+}
+
+// An initial bearing (forward azimuth) in degrees clockwise from true north,
+// normalized to [0, 360).
+message Bearing {
+  double degrees = 1;
+  string error = 2;
+}
+
+// Origin point, a forward azimuth, and a geodesic distance to travel from it.
+message DestinationInput {
+  double lon = 1;          // origin longitude, decimal degrees
+  double lat = 2;          // origin latitude, decimal degrees
+  double bearing_deg = 3;  // forward azimuth, degrees clockwise from true north
+  double distance_m = 4;   // distance to travel along the geodesic, meters
+}
+
+// The total geodesic length of a LineString (or MultiLineString) in meters;
+// 0 for a single point.
+message Length {
+  double meters = 1;
+  // WRONG_GEOMETRY_TYPE (input was not a line), plus the Geometry error tokens.
+  string error = 2;
+}
+
+// The geodesic area (m²) and perimeter (m) of a Polygon or MultiPolygon.
+// `square_meters` is the enclosed area, normalized to be independent of ring
+// winding order for any region up to half the Earth's surface (a genuine
+// polygon larger than that must use a GeoJSON right-hand-rule / CCW exterior).
+message Area {
+  double square_meters = 1;
+  double perimeter_meters = 2;
+  // WRONG_GEOMETRY_TYPE (input was not a polygon), plus the Geometry error tokens.
+  string error = 3;
+}
+
+// An axis-aligned bounding box in decimal degrees. `geojson` carries the same
+// box as a GeoJSON Polygon so it can be chained directly into geometry nodes.
+message BoundingBox {
+  double min_lon = 1;
+  double min_lat = 2;
+  double max_lon = 3;
+  double max_lat = 4;
+  string geojson = 5;
+  string error = 6;
+}
+
+// A GeoJSON polygon (or multipolygon) plus a point to test for containment.
+message ContainsInput {
+  string geojson = 1;  // the polygon(s) to test against
+  double lon = 2;      // test-point longitude, decimal degrees
+  double lat = 3;      // test-point latitude, decimal degrees
+}
+
+// Whether the test point lies inside the polygon (boundary excluded).
+message Contains {
+  bool contains = 1;
+  // WRONG_GEOMETRY_TYPE (input was not a polygon), plus the Geometry error tokens.
+  string error = 2;
+}
+
+// A geometry to simplify with the Ramer–Douglas–Peucker algorithm.
+message SimplifyInput {
+  string geojson = 1;   // a LineString / MultiLineString / Polygon geometry
+  double epsilon = 2;   // tolerance in degrees; larger drops more points (>= 0)
+}
