@@ -110,4 +110,34 @@ mod tests {
         assert_eq!(simplify(&ax, si(r#"{"type":"LineString","coordinates":[[0,0],[1,1]]}"#, -1.0)).unwrap().error, "OUT_OF_RANGE");
         assert_eq!(simplify(&ax, si("bad", 0.1)).unwrap().error, "INVALID_GEOJSON");
     }
+
+    // Build a dense "sawtooth" LineString of `n` points alternating y=+4/-4.
+    fn sawtooth(n: usize) -> String {
+        let mut c = String::from("[0,0]");
+        for i in 1..n {
+            let x = i as f64 * 0.001;
+            let y = if i % 2 == 0 { 4.0 } else { -4.0 };
+            c.push_str(&format!(",[{},{}]", x, y));
+        }
+        format!(r#"{{"type":"LineString","coordinates":[{}]}}"#, c)
+    }
+
+    // Simplify enforces its own tight vertex cap (10,000) so the recursive RDP
+    // cannot be driven into a costly/deep run: > 10,000 vertices -> TOO_MANY_COORDS.
+    #[test]
+    fn test_vertex_cap() {
+        let ax = test_context();
+        assert_eq!(simplify(&ax, si(&sawtooth(10_001), 0.00001)).unwrap().error, "TOO_MANY_COORDS");
+    }
+
+    // Regression for the recursive-RDP stack overflow: a dense sawtooth at the
+    // cap boundary that keeps every vertex (tiny epsilon) drives deep recursion,
+    // which must COMPLETE on the large worker stack rather than abort the process.
+    #[test]
+    fn test_deep_recursion_does_not_crash() {
+        let ax = test_context();
+        let out = simplify(&ax, si(&sawtooth(10_000), 0.00001)).unwrap();
+        assert_eq!(out.error, "");
+        assert!(!out.geojson.is_empty());
+    }
 }

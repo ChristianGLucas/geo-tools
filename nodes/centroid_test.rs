@@ -107,6 +107,38 @@ mod tests {
         assert!((lon - 5.5).abs() < 1e-9 && (lat + 3.25).abs() < 1e-9);
     }
 
+    // A single Feature wrapping one geometry is accepted (unwrapped to its geometry).
+    #[test]
+    fn test_feature_is_accepted() {
+        let ax = test_context();
+        let out = centroid(&ax, geom(
+            r#"{"type":"Feature","properties":{},"geometry":{"type":"Point","coordinates":[5,7]}}"#,
+        )).unwrap();
+        assert_eq!(out.error, "");
+        let (lon, lat) = point_coords(&out.geojson);
+        assert!((lon - 5.0).abs() < 1e-9 && (lat - 7.0).abs() < 1e-9);
+    }
+
+    // A FeatureCollection is rejected as ambiguous.
+    #[test]
+    fn test_feature_collection_is_rejected() {
+        let ax = test_context();
+        assert_eq!(
+            centroid(&ax, geom(r#"{"type":"FeatureCollection","features":[]}"#)).unwrap().error,
+            "WRONG_GEOMETRY_TYPE"
+        );
+    }
+
+    // A geometry with no computable centroid yields EMPTY_GEOMETRY.
+    #[test]
+    fn test_empty_geometry_token() {
+        let ax = test_context();
+        assert_eq!(
+            centroid(&ax, geom(r#"{"type":"MultiPoint","coordinates":[]}"#)).unwrap().error,
+            "EMPTY_GEOMETRY"
+        );
+    }
+
     #[test]
     fn test_error_paths() {
         let ax = test_context();

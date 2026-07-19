@@ -6,8 +6,11 @@ use geo::{GeodesicArea, Geometry as GeoGeometry};
 mod geoutil;
 
 /// Geodesic area (m²) and perimeter (m) of a Polygon or MultiPolygon on the
-/// WGS-84 ellipsoid. `square_meters` is the unsigned area, so ring winding order
-/// does not affect the sign. Non-polygon geometries yield WRONG_GEOMETRY_TYPE.
+/// WGS-84 ellipsoid, following the GeoJSON right-hand rule (RFC 7946): ring
+/// winding decides which side is the interior. A counter-clockwise exterior ring
+/// measures the enclosed region; a clockwise exterior ring describes — and
+/// measures — the complementary region. Non-polygon geometries yield
+/// WRONG_GEOMETRY_TYPE.
 pub fn area(
     ax: &dyn AxiomContext,
     input: Geometry,

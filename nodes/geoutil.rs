@@ -15,8 +15,9 @@ use std::str::FromStr;
 /// Max accepted length of a GeoJSON input string (bytes). Checked on the RAW
 /// input before any parse, bounding allocation/parse cost up front.
 pub const MAX_GEOJSON_LEN: usize = 1_000_000;
-/// Max total coordinate count in a parsed geometry. Bounds superlinear ops
-/// (Ramer–Douglas–Peucker, convex hull) against a crafted huge input.
+/// Max total coordinate count in any parsed geometry — a coarse backstop on
+/// memory. It bounds count only, not recursion depth; the Simplify node applies
+/// its own much tighter, RDP-specific cap on top of this.
 pub const MAX_COORDS: usize = 100_000;
 
 /// True if a point's coordinates are finite and within WGS-84 range.

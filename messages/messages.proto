@@ -17,7 +17,8 @@ message Geometry {
   string geojson = 1;
   // Why geometry production failed (EMPTY_INPUT, INVALID_GEOJSON,
   // WRONG_GEOMETRY_TYPE, INPUT_TOO_LONG, TOO_MANY_COORDS, NON_FINITE_COORD,
-  // OUT_OF_RANGE for a coordinate with |lat|>90 or |lon|>180, and DEGENERATE
+  // OUT_OF_RANGE for a coordinate with |lat|>90 or |lon|>180, EMPTY_GEOMETRY
+  // when a geometry has no computable result such as a centroid, and DEGENERATE
   // when a convex hull has fewer than three non-collinear points); empty on
   // success. proto3 omits empty strings from JSON, so treat a missing `error`
   // as success and a missing `geojson` as "no geometry produced".
@@ -100,7 +101,9 @@ message Contains {
   string error = 2;
 }
 
-// A geometry to simplify with the Ramer–Douglas–Peucker algorithm.
+// A geometry to simplify with the Ramer–Douglas–Peucker algorithm. Inputs with
+// more than 10,000 vertices return TOO_MANY_COORDS (the recursive algorithm is
+// bounded to keep worst-case cost small).
 message SimplifyInput {
   string geojson = 1;   // a LineString / MultiLineString / Polygon geometry
   double epsilon = 2;   // tolerance in degrees; larger drops more points (>= 0)

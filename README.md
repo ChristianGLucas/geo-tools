@@ -58,10 +58,17 @@ Every input is validated: point-coordinate nodes (`Distance`, `Bearing`,
 `Destination`, `Contains`) and every geometry's coordinates return
 `NON_FINITE_COORD` or `OUT_OF_RANGE` (|lat|>90 or |lon|>180) rather than a bad
 number — so a geodesic op never silently yields `NaN`. Geometry inputs are also
-bounded: a GeoJSON string over 1 MB returns `INPUT_TOO_LONG`, and a geometry with
-more than 100,000 coordinates returns `TOO_MANY_COORDS`, so a crafted input
-cannot exhaust memory or CPU. A single Feature wrapping one geometry is accepted;
-a FeatureCollection is rejected as ambiguous.
+bounded: a geometry with more than 100,000 coordinates returns `TOO_MANY_COORDS`,
+and `Simplify` (whose recursion is the costliest path) caps at 10,000 vertices,
+so a crafted input cannot exhaust memory or CPU. The node also rejects a GeoJSON
+string over 1 MB with `INPUT_TOO_LONG` as defense in depth, though over the HTTP
+bridge the platform gateway may reject an oversized body with a 413 before the
+node runs. A single Feature wrapping one geometry is accepted; a FeatureCollection
+is rejected as ambiguous.
+
+Errors do not propagate across a flow edge: if a producing node fails it emits
+empty `geojson`, and a downstream node then reports `EMPTY_INPUT` rather than the
+original cause — inspect each node's own `error` when debugging a chain.
 
 ### Caveats (honest edges)
 

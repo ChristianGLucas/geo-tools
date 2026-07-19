@@ -127,4 +127,25 @@ mod tests {
         assert_eq!(length(&ax, geom("not json")).unwrap().error, "INVALID_GEOJSON");
         assert_eq!(length(&ax, geom("")).unwrap().error, "EMPTY_INPUT");
     }
+
+    // The shared coordinate cap fires: a geometry with > MAX_COORDS (100k)
+    // coordinates returns TOO_MANY_COORDS before any measurement.
+    #[test]
+    fn test_too_many_coords_cap() {
+        let ax = test_context();
+        let mut coords = String::from("[0,0]");
+        for _ in 0..100_001 {
+            coords.push_str(",[0,0]");
+        }
+        let gj = format!(r#"{{"type":"LineString","coordinates":[{}]}}"#, coords);
+        assert_eq!(length(&ax, geom(&gj)).unwrap().error, "TOO_MANY_COORDS");
+    }
+
+    // The raw-length cap fires on the untrimmed input, before parsing.
+    #[test]
+    fn test_input_too_long_cap() {
+        let ax = test_context();
+        let huge = "a".repeat(1_000_001);
+        assert_eq!(length(&ax, geom(&huge)).unwrap().error, "INPUT_TOO_LONG");
+    }
 }
