@@ -14,8 +14,16 @@ prost = "0.13"
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "signal", "sync"] }
 tokio-stream = { version = "0.1", features = ["net"] }
 serde_json = "1"
-geo = "=0.33.1"
+geo = { version = "=0.33.1", default-features = false }
 geojson = { version = "=1.0.0", features = ["geo-types"] }
 
 [build-dependencies]
 tonic-build = "0.12"
+
+# Favor fast, cheap compilation over peak runtime speed: these geometry ops are
+# not hot loops, and opt-level 1 keeps the server-side build under its deadline.
+[profile.release]
+opt-level = 1
+codegen-units = 16
+lto = false
+debug = false
