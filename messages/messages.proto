@@ -16,9 +16,11 @@ package christiangeorgelucas.geo_tools;
 message Geometry {
   string geojson = 1;
   // Why geometry production failed (EMPTY_INPUT, INVALID_GEOJSON,
-  // WRONG_GEOMETRY_TYPE, INPUT_TOO_LONG, TOO_MANY_COORDS, NON_FINITE_COORD);
-  // empty on success. proto3 omits empty strings from JSON, so treat a missing
-  // `error` as success and a missing `geojson` as "no geometry produced".
+  // WRONG_GEOMETRY_TYPE, INPUT_TOO_LONG, TOO_MANY_COORDS, NON_FINITE_COORD,
+  // OUT_OF_RANGE for a coordinate with |lat|>90 or |lon|>180, and DEGENERATE
+  // when a convex hull has fewer than three non-collinear points); empty on
+  // success. proto3 omits empty strings from JSON, so treat a missing `error`
+  // as success and a missing `geojson` as "no geometry produced".
   string error = 2;
 }
 
@@ -60,10 +62,12 @@ message Length {
   string error = 2;
 }
 
-// The geodesic area (m²) and perimeter (m) of a Polygon or MultiPolygon.
-// `square_meters` is the enclosed area, normalized to be independent of ring
-// winding order for any region up to half the Earth's surface (a genuine
-// polygon larger than that must use a GeoJSON right-hand-rule / CCW exterior).
+// The geodesic area (m²) and perimeter (m) of a Polygon or MultiPolygon,
+// following the GeoJSON right-hand rule (RFC 7946): the ring winding decides
+// which side is the interior, so `square_meters` is the area of that interior.
+// An exterior ring wound counter-clockwise gives the enclosed region; a ring
+// wound the other way describes the complementary region and is measured as
+// such. Winding is therefore meaningful — use a CCW exterior for the common case.
 message Area {
   double square_meters = 1;
   double perimeter_meters = 2;

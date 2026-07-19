@@ -1,6 +1,7 @@
 name: christiangeorgelucas/geo-tools
 version: 0.1.0
 language: rust
+description: Composable geospatial geometry nodes over a single GeoJSON envelope — distance, bearing, destination, length, geodesic area, centroid, bounding box, convex hull, RDP simplify, and point-in-polygon. Geodesic WGS-84, offline and deterministic, wrapping the Rust georust/geo library.
 nodes:
     - name: Distance
       input: PointPair

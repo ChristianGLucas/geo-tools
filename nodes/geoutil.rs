@@ -52,12 +52,17 @@ pub fn parse_geometry(geojson: &str) -> Result<Geometry<f64>, &'static str> {
         },
         GeoJson::FeatureCollection(_) => return Err("WRONG_GEOMETRY_TYPE"),
     };
-    // Single pass: count coordinates and verify each is finite.
+    // Single pass: count coordinates and verify each is a finite, in-range
+    // WGS-84 position. Range-checking here means the geodesic algorithms never
+    // receive coordinates that would make them return NaN with no error set.
     let mut n = 0usize;
     for c in geom.coords_iter() {
         n += 1;
         if !c.x.is_finite() || !c.y.is_finite() {
             return Err("NON_FINITE_COORD");
+        }
+        if c.y.abs() > 90.0 || c.x.abs() > 180.0 {
+            return Err("OUT_OF_RANGE");
         }
     }
     if n > MAX_COORDS {

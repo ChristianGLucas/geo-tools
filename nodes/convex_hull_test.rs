@@ -106,6 +106,15 @@ mod tests {
         }
     }
 
+    // A single point / collinear points can't form a polygon hull: report
+    // DEGENERATE rather than emitting an invalid <4-position ring.
+    #[test]
+    fn test_degenerate_hull_is_structured_error() {
+        let ax = test_context();
+        assert_eq!(convex_hull(&ax, geom(r#"{"type":"Point","coordinates":[3,4]}"#)).unwrap().error, "DEGENERATE");
+        assert_eq!(convex_hull(&ax, geom(r#"{"type":"LineString","coordinates":[[0,0],[1,1],[2,2]]}"#)).unwrap().error, "DEGENERATE");
+    }
+
     #[test]
     fn test_error_paths() {
         let ax = test_context();

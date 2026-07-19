@@ -23,6 +23,12 @@ pub fn convex_hull(
         return Ok(Geometry { geojson: String::new(), error: "EMPTY_GEOMETRY".into() });
     }
     let hull = MultiPoint::new(pts).convex_hull();
+    // Fewer than three non-collinear points cannot form a polygon; geo returns a
+    // degenerate ring (<4 positions), which is not valid GeoJSON. Report it as a
+    // structured error instead of emitting an unchainable geometry.
+    if hull.exterior().0.len() < 4 {
+        return Ok(Geometry { geojson: String::new(), error: "DEGENERATE".into() });
+    }
     let out: GeoGeometry<f64> = GeoGeometry::Polygon(hull);
     Ok(Geometry { geojson: geoutil::to_geojson(&out), error: String::new() })
 }

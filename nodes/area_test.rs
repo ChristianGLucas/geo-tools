@@ -130,16 +130,30 @@ mod tests {
         assert!(rel_p < 0.005, "geo={} oracle={} rel={}", out.perimeter_meters, oracle_perim, rel_p);
     }
 
-    // Unsigned area is winding-order independent: a clockwise ring gives the
-    // same magnitude as the counter-clockwise one above.
+    // Winding is meaningful per RFC 7946: a CCW exterior ring encloses the small
+    // region (~1.2e10 m²); the same ring reversed (CW) describes the complement,
+    // so its area is ~the whole Earth minus that region (~5.1e14 m²).
     #[test]
-    fn test_winding_order_independent() {
+    fn test_winding_follows_rfc7946() {
         let ax = test_context();
         let ccw = area(&ax, geom(r#"{"type":"Polygon","coordinates":[[[0,0],[1,0],[1,1],[0,1],[0,0]]]}"#)).unwrap();
         let cw = area(&ax, geom(r#"{"type":"Polygon","coordinates":[[[0,0],[0,1],[1,1],[1,0],[0,0]]]}"#)).unwrap();
-        assert!((ccw.square_meters - cw.square_meters).abs() < 1.0);
-        // Both resolve to the small enclosed region (~1.2e10 m²), not the Earth complement.
-        assert!(ccw.square_meters > 1.0e10 && ccw.square_meters < 2.0e10, "got {}", ccw.square_meters);
+        assert!(ccw.square_meters > 1.0e10 && ccw.square_meters < 2.0e10, "ccw {}", ccw.square_meters);
+        assert!(cw.square_meters > 5.0e14, "cw complement {}", cw.square_meters);
+    }
+
+    // A genuinely large (>half the Earth) CCW polygon must return its OWN large
+    // area, NOT the small complement — this locks out the earlier magnitude
+    // "normalization" bug that corrupted large polygons.
+    #[test]
+    fn test_large_polygon_not_complemented() {
+        let ax = test_context();
+        let out = area(&ax, geom(
+            r#"{"type":"Polygon","coordinates":[[[-170,-80],[170,-80],[170,80],[-170,80],[-170,-80]]]}"#,
+        )).unwrap();
+        assert_eq!(out.error, "");
+        // ~93% of Earth's surface (~4.82e14 m²), far above the ~2.8e13 complement.
+        assert!(out.square_meters > 4.0e14 && out.square_meters < 5.101e14, "got {}", out.square_meters);
     }
 
     #[test]

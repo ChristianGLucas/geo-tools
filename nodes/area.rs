@@ -17,18 +17,15 @@ pub fn area(
         Ok(g) => g,
         Err(e) => return Ok(Area { square_meters: 0.0, perimeter_meters: 0.0, error: e.into() }),
     };
-    let (raw, perim) = match &geom {
+    // Trust geo's geodesic area, which already follows the GeoJSON right-hand
+    // rule (RFC 7946): the ring winding defines which side is the interior, so
+    // `geodesic_area_unsigned` returns the area of that interior directly. A
+    // reversed (clockwise) exterior ring therefore names the complementary
+    // region and is measured as such — winding is meaningful, not normalized away.
+    let (sq, perim) = match &geom {
         GeoGeometry::Polygon(p) => (p.geodesic_area_unsigned(), p.geodesic_perimeter()),
         GeoGeometry::MultiPolygon(mp) => (mp.geodesic_area_unsigned(), mp.geodesic_perimeter()),
         _ => return Ok(Area { square_meters: 0.0, perimeter_meters: 0.0, error: "WRONG_GEOMETRY_TYPE".into() }),
     };
-    // geo interprets ring winding per GeoJSON's right-hand rule: a reversed
-    // (clockwise) exterior ring names the *complementary* region, so its unsigned
-    // area comes back as ~(Earth − region). Normalize to the smaller enclosed
-    // region so the result is winding-order independent. This is exact for any
-    // region up to half the Earth's surface; a genuine polygon larger than that
-    // must follow the right-hand rule (CCW exterior) to measure correctly.
-    const EARTH_AREA_M2: f64 = 5.100_656_217_240_886e14; // WGS-84 ellipsoid surface
-    let sq = if raw > EARTH_AREA_M2 / 2.0 { (EARTH_AREA_M2 - raw).max(0.0) } else { raw };
     Ok(Area { square_meters: sq, perimeter_meters: perim, error: String::new() })
 }

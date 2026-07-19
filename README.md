@@ -54,17 +54,30 @@ the JSON emitted over the HTTP bridge, so a consumer must treat a missing
 | `Simplify` | `SimplifyInput` → `Geometry` | Ramer–Douglas–Peucker simplification (epsilon in degrees) |
 | `Contains` | `ContainsInput` → `Contains` | Whether a point lies inside a polygon (interior only) |
 
-`Distance`, `Bearing`, `Destination`, and `Contains` validate their point
-coordinates and return `NON_FINITE_COORD` / `OUT_OF_RANGE` (|lat|>90 or
-|lon|>180) rather than a bad number. Geometry inputs are bounded: a GeoJSON
-string over 1 MB returns `INPUT_TOO_LONG`, and a geometry with more than 100,000
-coordinates returns `TOO_MANY_COORDS`, so a crafted input cannot exhaust memory
-or CPU. A single Feature wrapping one geometry is accepted; a FeatureCollection
-is rejected as ambiguous.
+Every input is validated: point-coordinate nodes (`Distance`, `Bearing`,
+`Destination`, `Contains`) and every geometry's coordinates return
+`NON_FINITE_COORD` or `OUT_OF_RANGE` (|lat|>90 or |lon|>180) rather than a bad
+number — so a geodesic op never silently yields `NaN`. Geometry inputs are also
+bounded: a GeoJSON string over 1 MB returns `INPUT_TOO_LONG`, and a geometry with
+more than 100,000 coordinates returns `TOO_MANY_COORDS`, so a crafted input
+cannot exhaust memory or CPU. A single Feature wrapping one geometry is accepted;
+a FeatureCollection is rejected as ambiguous.
 
-`ConvexHull` computes the hull planar-ly on lon/lat, which is correct for local
-extents; near the poles or across the antimeridian a planar hull can differ from
-the true spherical hull.
+### Caveats (honest edges)
+
+- **`Area` follows the GeoJSON right-hand rule (RFC 7946).** Ring winding is
+  meaningful: a counter-clockwise exterior ring measures the enclosed region; a
+  clockwise ring describes — and measures — the complementary region. Use CCW
+  exteriors for the common case.
+- **`ConvexHull`** computes the hull planar-ly on lon/lat (correct for local
+  extents; near the poles or across the antimeridian a planar hull can differ
+  from the true spherical hull). Fewer than three non-collinear points cannot
+  form a polygon and return `DEGENERATE`.
+- **Garbage-in cases are not specially detected** (they do not crash, but the
+  result is only as meaningful as the input): a `Bearing` whose origin is exactly
+  a geographic pole is at the azimuth singularity, and `Area` of a
+  self-intersecting (bow-tie) polygon returns geo's signed-loop cancellation.
+  Supply valid, simple geometries.
 
 ## Correctness
 
