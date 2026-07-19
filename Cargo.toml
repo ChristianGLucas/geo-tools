@@ -19,13 +19,3 @@ geojson = { version = "=1.0.0", features = ["geo-types"] }
 
 [build-dependencies]
 tonic-build = "0.12"
-
-# Favor fast, cheap compilation over peak runtime speed: these geometry ops are
-# not hot loops, and opt-level 1 keeps the server-side build under its deadline.
-[profile.release]
-opt-level = 0
-codegen-units = 256
-lto = false
-debug = false
-incremental = false
-strip = true
