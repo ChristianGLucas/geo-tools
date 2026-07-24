@@ -128,24 +128,28 @@ mod tests {
         assert_eq!(length(&ax, geom("")).unwrap().error, "EMPTY_INPUT");
     }
 
-    // The shared coordinate cap fires: a geometry with > MAX_COORDS (100k)
-    // coordinates returns TOO_MANY_COORDS before any measurement.
+    // Coordinate-count caps are the platform's job, not this node's — Length
+    // is a linear pass over the coordinates (no recursion), so a large
+    // geometry must compute cleanly rather than being rejected.
     #[test]
-    fn test_too_many_coords_cap() {
+    fn test_large_coord_count_no_crash() {
         let ax = test_context();
         let mut coords = String::from("[0,0]");
         for _ in 0..100_001 {
-            coords.push_str(",[0,0]");
+            coords.push_str(",[0,1]");
         }
         let gj = format!(r#"{{"type":"LineString","coordinates":[{}]}}"#, coords);
-        assert_eq!(length(&ax, geom(&gj)).unwrap().error, "TOO_MANY_COORDS");
+        let out = length(&ax, geom(&gj)).unwrap();
+        assert_eq!(out.error, "");
+        assert!(out.meters > 0.0);
     }
 
-    // The raw-length cap fires on the untrimmed input, before parsing.
+    // A large raw input that isn't valid GeoJSON must still fail cleanly
+    // instead of crashing; payload-size limits are the platform's job.
     #[test]
-    fn test_input_too_long_cap() {
+    fn test_large_invalid_input_no_crash() {
         let ax = test_context();
-        let huge = "a".repeat(1_000_001);
-        assert_eq!(length(&ax, geom(&huge)).unwrap().error, "INPUT_TOO_LONG");
+        let huge = "a".repeat(2_000_001);
+        assert_eq!(length(&ax, geom(&huge)).unwrap().error, "INVALID_GEOJSON");
     }
 }

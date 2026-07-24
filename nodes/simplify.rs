@@ -7,8 +7,10 @@ mod geoutil;
 
 /// Largest vertex count Simplify will process. Ramer–Douglas–Peucker recurses,
 /// and an adversarial shape (e.g. a dense sawtooth) recurses O(n) deep and costs
-/// O(n²); this per-node cap keeps worst-case CPU well under a second and is far
-/// tighter than the shared MAX_COORDS, which only bounds count, not recursion.
+/// O(n²); this cap is a genuine stack-safety and worst-case-CPU bound on the
+/// recursive algorithm itself, not a generic payload-size guard — every other
+/// node in this package (length, area, centroid, ...) is a linear pass over
+/// the coordinates with no such recursion risk, so only Simplify needs it.
 const MAX_SIMPLIFY_COORDS: usize = 10_000;
 
 /// Stack for the RDP worker thread. A native stack overflow aborts the whole

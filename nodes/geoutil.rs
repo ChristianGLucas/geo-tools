@@ -12,14 +12,6 @@ use geo::{CoordsIter, Geometry};
 use geojson::GeoJson;
 use std::str::FromStr;
 
-/// Max accepted length of a GeoJSON input string (bytes). Checked on the RAW
-/// input before any parse, bounding allocation/parse cost up front.
-pub const MAX_GEOJSON_LEN: usize = 1_000_000;
-/// Max total coordinate count in any parsed geometry — a coarse backstop on
-/// memory. It bounds count only, not recursion depth; the Simplify node applies
-/// its own much tighter, RDP-specific cap on top of this.
-pub const MAX_COORDS: usize = 100_000;
-
 /// True if a point's coordinates are finite and within WGS-84 range.
 pub fn point_in_range(lon: f64, lat: f64) -> Result<(), &'static str> {
     if !lon.is_finite() || !lat.is_finite() {
@@ -31,15 +23,14 @@ pub fn point_in_range(lon: f64, lat: f64) -> Result<(), &'static str> {
     Ok(())
 }
 
-/// Parse a GeoJSON string into a geo-types `Geometry<f64>`, enforcing the input
-/// caps and rejecting non-finite coordinates. A bare geometry, or a single
-/// Feature wrapping one, is accepted; a FeatureCollection is rejected as
-/// ambiguous. Returns a stable error token on any failure.
+/// Parse a GeoJSON string into a geo-types `Geometry<f64>`, rejecting
+/// non-finite coordinates. A bare geometry, or a single Feature wrapping one,
+/// is accepted; a FeatureCollection is rejected as ambiguous. Returns a
+/// stable error token on any failure. Payload-size and coordinate-count
+/// limits are the platform's job, not this function's — serde_json (which
+/// geojson parsing is built on) already refuses pathologically deep JSON
+/// nesting with a parse error rather than recursing unboundedly.
 pub fn parse_geometry(geojson: &str) -> Result<Geometry<f64>, &'static str> {
-    // Length cap on the RAW bytes, before trim or parse.
-    if geojson.len() > MAX_GEOJSON_LEN {
-        return Err("INPUT_TOO_LONG");
-    }
     let s = geojson.trim();
     if s.is_empty() {
         return Err("EMPTY_INPUT");
@@ -53,21 +44,16 @@ pub fn parse_geometry(geojson: &str) -> Result<Geometry<f64>, &'static str> {
         },
         GeoJson::FeatureCollection(_) => return Err("WRONG_GEOMETRY_TYPE"),
     };
-    // Single pass: count coordinates and verify each is a finite, in-range
-    // WGS-84 position. Range-checking here means the geodesic algorithms never
+    // Single pass: verify every coordinate is a finite, in-range WGS-84
+    // position. Range-checking here means the geodesic algorithms never
     // receive coordinates that would make them return NaN with no error set.
-    let mut n = 0usize;
     for c in geom.coords_iter() {
-        n += 1;
         if !c.x.is_finite() || !c.y.is_finite() {
             return Err("NON_FINITE_COORD");
         }
         if c.y.abs() > 90.0 || c.x.abs() > 180.0 {
             return Err("OUT_OF_RANGE");
         }
-    }
-    if n > MAX_COORDS {
-        return Err("TOO_MANY_COORDS");
     }
     Ok(geom)
 }
